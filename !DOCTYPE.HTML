@@ -1,0 +1,1333 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>이차곡선 45° 축 회전 및 행렬 이차변환 시각화</title>
+  <!-- KaTeX CDN (오프라인 환경에서도 기본 수식 폴백이 동작하도록 설계됨) -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css" crossorigin="anonymous">
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js" crossorigin="anonymous" onload="window.onKatexLoaded && window.onKatexLoaded()"></script>
+  <style>
+    :root {
+      --bg-app: #f1f5f9;
+      --bg-panel: #ffffff;
+      --bg-subtle: #f8fafc;
+      --border: #e2e8f0;
+      --text-main: #0f172a;
+      --text-muted: #475569;
+      --text-light: #64748b;
+      --red: #ef4444;
+      --red-bg: #fef2f2;
+      --blue: #3b82f6;
+      --blue-bg: #eff6ff;
+      --sky: #0ea5e9;
+      --accent: #2563eb;
+      --radius: 12px;
+      --shadow: 0 4px 16px rgba(15, 23, 42, 0.06);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Noto Sans KR', sans-serif;
+      background-color: var(--bg-app);
+      color: var(--text-main);
+      line-height: 1.55;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* 상단 헤더 */
+    header {
+      background: #0f172a;
+      color: #f8fafc;
+      padding: 14px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 10px;
+      border-bottom: 1px solid #1e293b;
+    }
+
+    header h1 {
+      font-size: 1.15rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    header h1 span.badge {
+      font-size: 0.75rem;
+      font-weight: 600;
+      background: rgba(59, 130, 246, 0.22);
+      color: #93c5fd;
+      border: 1px solid rgba(59, 130, 246, 0.4);
+      padding: 2px 8px;
+      border-radius: 999px;
+    }
+
+    header p {
+      font-size: 0.84rem;
+      color: #94a3b8;
+    }
+
+    /* 메인 2단 대시보드 레이아웃 */
+    .dashboard {
+      display: grid;
+      grid-template-columns: 490px 1fr;
+      gap: 18px;
+      padding: 18px;
+      flex: 1;
+      max-width: 1720px;
+      width: 100%;
+      margin: 0 auto;
+    }
+
+    /* 좌측 패널: 입력 + 행렬 계산 과정 */
+    .left-panel {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      max-height: calc(100vh - 88px);
+      overflow-y: auto;
+      padding-right: 4px;
+    }
+
+    .left-panel::-webkit-scrollbar {
+      width: 6px;
+    }
+    .left-panel::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 3px;
+    }
+
+    .card {
+      background: var(--bg-panel);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 18px;
+      box-shadow: var(--shadow);
+    }
+
+    .card-title {
+      font-size: 0.96rem;
+      font-weight: 700;
+      color: var(--text-main);
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .conic-type-badge {
+      font-size: 0.76rem;
+      font-weight: 600;
+      padding: 3px 9px;
+      border-radius: 6px;
+      background: #f1f5f9;
+      color: #334155;
+      border: 1px solid #cbd5e1;
+    }
+
+    /* 프리셋 버튼 */
+    .preset-group {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-bottom: 14px;
+    }
+
+    .preset-btn {
+      font-size: 0.78rem;
+      font-weight: 600;
+      padding: 6px 10px;
+      border-radius: 7px;
+      border: 1px solid #cbd5e1;
+      background: var(--bg-subtle);
+      color: #334155;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .preset-btn:hover {
+      background: #e2e8f0;
+      border-color: #94a3b8;
+    }
+
+    .preset-btn.active {
+      background: #eff6ff;
+      border-color: var(--blue);
+      color: #1d4ed8;
+    }
+
+    /* 계수 입력 그리드 */
+    .coeff-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+
+    .input-box {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      background: var(--bg-subtle);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 8px 10px;
+      transition: border-color 0.15s;
+    }
+
+    .input-box:focus-within {
+      border-color: var(--blue);
+      background: #ffffff;
+    }
+
+    .input-box label {
+      font-size: 0.78rem;
+      font-weight: 700;
+      color: var(--text-muted);
+      display: flex;
+      justify-content: space-between;
+    }
+
+    .input-box label span {
+      font-weight: 500;
+      color: var(--text-light);
+    }
+
+    .input-box input {
+      width: 100%;
+      border: none;
+      background: transparent;
+      font-size: 0.98rem;
+      font-weight: 700;
+      color: var(--text-main);
+      outline: none;
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* 실시간 수식 미리보기 */
+    .preview-box {
+      background: var(--red-bg);
+      border: 1px solid #fecaca;
+      border-radius: 8px;
+      padding: 10px 14px;
+    }
+
+    .preview-label {
+      font-size: 0.74rem;
+      font-weight: 700;
+      color: #b91c1c;
+      margin-bottom: 3px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .dot-red {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--red);
+      display: inline-block;
+    }
+
+    .dot-blue {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--blue);
+      display: inline-block;
+    }
+
+    .preview-eq {
+      font-family: 'Cambria Math', 'Times New Roman', serif;
+      font-size: 1.05rem;
+      font-weight: 700;
+      color: #7f1d1d;
+      word-break: break-all;
+    }
+
+    /* 단계별 행렬 계산 과정 */
+    .step-list {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .step-item {
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 13px 14px;
+      background: var(--bg-subtle);
+    }
+
+    .step-header {
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: #1e293b;
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 7px;
+    }
+
+    .step-num {
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: #1e293b;
+      color: #ffffff;
+      font-size: 0.74rem;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .step-desc {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      margin-bottom: 8px;
+    }
+
+    .math-display {
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      padding: 10px 12px;
+      overflow-x: auto;
+      font-size: 0.92rem;
+    }
+
+    .math-display .katex-display {
+      margin: 0.35em 0;
+    }
+
+    /* CSS 폴백 행렬 스타일 */
+    .fallback-math {
+      font-family: 'Cambria Math', 'Times New Roman', serif;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px;
+      line-height: 1.4;
+    }
+    .mat {
+      display: inline-table;
+      vertical-align: middle;
+      border-left: 1.8px solid #1e293b;
+      border-right: 1.8px solid #1e293b;
+      border-radius: 4px;
+      padding: 2px 6px;
+      text-align: center;
+    }
+    .mat td {
+      padding: 2px 7px;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .final-eq-box {
+      background: var(--blue-bg);
+      border: 1px solid #bfdbfe;
+      border-radius: 8px;
+      padding: 11px 14px;
+      margin-top: 6px;
+    }
+
+    .final-eq-label {
+      font-size: 0.74rem;
+      font-weight: 700;
+      color: #1d4ed8;
+      margin-bottom: 3px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .final-eq-text {
+      font-family: 'Cambria Math', 'Times New Roman', serif;
+      font-size: 1.06rem;
+      font-weight: 700;
+      color: #1e3a8a;
+      word-break: break-all;
+    }
+
+    /* 우측 패널: 인터랙티브 그래프 캔버스 */
+    .right-panel {
+      background: var(--bg-panel);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      position: relative;
+      overflow: hidden;
+      min-height: 540px;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .canvas-wrapper {
+      position: relative;
+      flex: 1;
+      width: 100%;
+      height: 100%;
+      cursor: grab;
+      user-select: none;
+    }
+
+    .canvas-wrapper:active {
+      cursor: grabbing;
+    }
+
+    canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+    }
+
+    /* 우측 상단 범례(Legend) */
+    .legend-card {
+      position: absolute;
+      top: 14px;
+      right: 14px;
+      background: rgba(255, 255, 255, 0.94);
+      backdrop-filter: blur(8px);
+      border: 1px solid #cbd5e1;
+      border-radius: 10px;
+      padding: 11px 14px;
+      box-shadow: 0 4px 12px rgba(15, 23, 42, 0.08);
+      font-size: 0.8rem;
+      display: flex;
+      flex-direction: column;
+      gap: 7px;
+      z-index: 10;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      cursor: pointer;
+      color: #1e293b;
+      font-weight: 600;
+    }
+
+    .legend-item input[type="checkbox"] {
+      accent-color: #2563eb;
+      cursor: pointer;
+    }
+
+    .line-sample {
+      width: 22px;
+      height: 3px;
+      border-radius: 2px;
+      display: inline-block;
+    }
+
+    .line-red {
+      background: var(--red);
+    }
+
+    .line-blue {
+      background: var(--blue);
+    }
+
+    .line-sky-dashed {
+      height: 0;
+      border-top: 2px dashed var(--sky);
+    }
+
+    /* 좌측 하단 컨트롤 및 좌표 표시 */
+    .canvas-controls {
+      position: absolute;
+      bottom: 14px;
+      left: 14px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(255, 255, 255, 0.94);
+      backdrop-filter: blur(8px);
+      border: 1px solid #cbd5e1;
+      border-radius: 9px;
+      padding: 6px 10px;
+      box-shadow: 0 4px 12px rgba(15, 23, 42, 0.08);
+      z-index: 10;
+    }
+
+    .ctrl-btn {
+      border: 1px solid #cbd5e1;
+      background: #ffffff;
+      color: #1e293b;
+      font-size: 0.82rem;
+      font-weight: 700;
+      padding: 5px 10px;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+
+    .ctrl-btn:hover {
+      background: #f1f5f9;
+    }
+
+    .coord-readout {
+      position: absolute;
+      bottom: 14px;
+      right: 14px;
+      background: rgba(15, 23, 42, 0.84);
+      color: #f8fafc;
+      font-size: 0.78rem;
+      font-variant-numeric: tabular-nums;
+      padding: 5px 10px;
+      border-radius: 7px;
+      pointer-events: none;
+      z-index: 10;
+    }
+
+    /* 반응형 (태블릿/모바일 상하 배치) */
+    @media (max-width: 1024px) {
+      .dashboard {
+        grid-template-columns: 1fr;
+        padding: 12px;
+      }
+      .left-panel {
+        max-height: none;
+        overflow-y: visible;
+        padding-right: 0;
+      }
+      .right-panel {
+        height: 520px;
+        min-height: 440px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>
+      이차곡선 45° 축 회전 변환기
+      <span class="badge">행렬의 이차변환 · Orthogonal Transformation</span>
+    </h1>
+    <p>일반형 Ax² + Bxy + Cy² + Dx + Ey + F = 0 의 직교변환 계산 과정 및 음함수 그래프 시각화</p>
+  </header>
+
+  <main class="dashboard">
+    <!-- 좌측: 입력 및 행렬 계산 과정 -->
+    <section class="left-panel">
+      <!-- 1. 계수 입력 및 프리셋 -->
+      <div class="card">
+        <div class="card-title">
+          <span>1. 일반 이차곡선 방정식 입력</span>
+          <span id="conicBadge" class="conic-type-badge">쌍곡선 (Hyperbola)</span>
+        </div>
+
+        <div class="preset-group" id="presetGroup">
+          <button type="button" class="preset-btn active" data-preset="hyperbola">예1) 쌍곡선 (xy - 1 = 0)</button>
+          <button type="button" class="preset-btn" data-preset="ellipse">예2) 회전된 타원</button>
+          <button type="button" class="preset-btn" data-preset="parabola">예3) 회전된 포물선</button>
+          <button type="button" class="preset-btn" data-preset="general">예4) 일반형 (A ≠ C)</button>
+        </div>
+
+        <div class="coeff-grid">
+          <div class="input-box">
+            <label for="inA">A <span>(x² 계수)</span></label>
+            <input type="number" id="inA" step="any" value="0" />
+          </div>
+          <div class="input-box">
+            <label for="inB">B <span>(xy 계수)</span></label>
+            <input type="number" id="inB" step="any" value="1" />
+          </div>
+          <div class="input-box">
+            <label for="inC">C <span>(y² 계수)</span></label>
+            <input type="number" id="inC" step="any" value="0" />
+          </div>
+          <div class="input-box">
+            <label for="inD">D <span>(x 계수)</span></label>
+            <input type="number" id="inD" step="any" value="0" />
+          </div>
+          <div class="input-box">
+            <label for="inE">E <span>(y 계수)</span></label>
+            <input type="number" id="inE" step="any" value="0" />
+          </div>
+          <div class="input-box">
+            <label for="inF">F <span>(상수항)</span></label>
+            <input type="number" id="inF" step="any" value="-1" />
+          </div>
+        </div>
+
+        <div class="preview-box">
+          <div class="preview-label"><span class="dot-red"></span>입력된 원래 이차곡선 방정식 (빨간색 그래프)</div>
+          <div class="preview-eq" id="origEqPreview">xy - 1 = 0</div>
+        </div>
+      </div>
+
+      <!-- 2. 행렬의 이차변환 계산 과정 -->
+      <div class="card">
+        <div class="card-title">
+          <span>2. 45° 축 회전 행렬 변환 과정</span>
+        </div>
+
+        <div class="step-list">
+          <!-- Step 1 -->
+          <div class="step-item">
+            <div class="step-header"><span class="step-num">1</span>원래 이차곡선의 행렬 표현</div>
+            <div class="step-desc">이차형식 대칭행렬 Q와 일차항 행벡터 K로 방정식을 행렬 형태로 나타냅니다.</div>
+            <div class="math-display" id="step1Math"></div>
+          </div>
+
+          <!-- Step 2 -->
+          <div class="step-item">
+            <div class="step-header"><span class="step-num">2</span>θ = 45° 회전 변환 행렬 정의</div>
+            <div class="step-desc">좌표축을 반시계 방향으로 45° 회전하는 직교행렬 R (R⁻¹ = Rᵀ)을 정의합니다.</div>
+            <div class="math-display" id="step2Math"></div>
+          </div>
+
+          <!-- Step 3 -->
+          <div class="step-item">
+            <div class="step-header"><span class="step-num">3</span>직교변환을 통한 새로운 행렬 계산 (Q' = RᵀQR, K' = KR)</div>
+            <div class="step-desc">x = Rx' 을 대입하면 x'ᵀ(RᵀQR)x' + (KR)x' + F = 0 이 됩니다.</div>
+            <div class="math-display" id="step3Math"></div>
+          </div>
+
+          <!-- Step 4 -->
+          <div class="step-item">
+            <div class="step-header"><span class="step-num">4</span>변환된 최종 이차곡선 방정식 도출</div>
+            <div class="step-desc">계산된 Q'과 K'의 성분으로부터 회전 좌표계 (x', y')에서의 방정식을 얻습니다.</div>
+            <div class="math-display" id="step4Math"></div>
+            <div class="final-eq-box">
+              <div class="final-eq-label"><span class="dot-blue"></span>45° 회전 변환된 방정식 (파란색 그래프)</div>
+              <div class="final-eq-text" id="transEqPreview">0.5x'² - 0.5y'² - 1 = 0</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 우측: 인터랙티브 그래프 캔버스 -->
+    <section class="right-panel">
+      <div class="canvas-wrapper" id="canvasWrapper">
+        <canvas id="graphCanvas"></canvas>
+
+        <!-- 범례 -->
+        <div class="legend-card">
+          <label class="legend-item">
+            <input type="checkbox" id="toggleOrig" checked />
+            <span class="line-sample line-red"></span>
+            <span>원래 그래프 (f(x, y) = 0)</span>
+          </label>
+          <label class="legend-item">
+            <input type="checkbox" id="toggleTrans" checked />
+            <span class="line-sample line-blue"></span>
+            <span>45° 회전 변환 그래프 (f'(x, y) = 0)</span>
+          </label>
+          <label class="legend-item">
+            <input type="checkbox" id="toggleRotAxes" checked />
+            <span class="line-sample line-sky-dashed"></span>
+            <span>45° 회전 보조축 (y = x, y = -x)</span>
+          </label>
+        </div>
+
+        <!-- 확대/축소/초기화 컨트롤 -->
+        <div class="canvas-controls">
+          <button type="button" class="ctrl-btn" id="zoomInBtn" title="확대">+</button>
+          <button type="button" class="ctrl-btn" id="zoomOutBtn" title="축소">−</button>
+          <button type="button" class="ctrl-btn" id="resetViewBtn">화면 초기화</button>
+        </div>
+
+        <!-- 마우스 좌표 표시 -->
+        <div class="coord-readout" id="coordReadout">x: 0.00, y: 0.00</div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    (function () {
+      const EPS = 1e-12;
+      const INV_SQRT2 = Math.SQRT1_2; // 1 / sqrt(2)
+
+      // 프리셋 데이터
+      const PRESETS = {
+        hyperbola: { A: 0, B: 1, C: 0, D: 0, E: 0, F: -1 },
+        ellipse:   { A: 5, B: 6, C: 5, D: 0, E: 0, F: -8 },
+        parabola:  { A: 1, B: -2, C: 1, D: -4, E: -4, F: 0 },
+        general:   { A: 2, B: 4, C: -1, D: -6, E: 2, F: -3 }
+      };
+
+      // DOM 요소 참조
+      const inputs = {
+        A: document.getElementById('inA'),
+        B: document.getElementById('inB'),
+        C: document.getElementById('inC'),
+        D: document.getElementById('inD'),
+        E: document.getElementById('inE'),
+        F: document.getElementById('inF')
+      };
+
+      const origEqPreview = document.getElementById('origEqPreview');
+      const transEqPreview = document.getElementById('transEqPreview');
+      const conicBadge = document.getElementById('conicBadge');
+      const step1Math = document.getElementById('step1Math');
+      const step2Math = document.getElementById('step2Math');
+      const step3Math = document.getElementById('step3Math');
+      const step4Math = document.getElementById('step4Math');
+
+      const canvas = document.getElementById('graphCanvas');
+      const canvasWrapper = document.getElementById('canvasWrapper');
+      const ctx = canvas.getContext('2d');
+      const coordReadout = document.getElementById('coordReadout');
+
+      const toggleOrig = document.getElementById('toggleOrig');
+      const toggleTrans = document.getElementById('toggleTrans');
+      const toggleRotAxes = document.getElementById('toggleRotAxes');
+
+      // 현재 방정식 계수 상태
+      let state = {
+        orig: { A: 0, B: 1, C: 0, D: 0, E: 0, F: -1 },
+        trans: { A: 0.5, B: 0, C: -0.5, D: 0, E: 0, F: -1 }
+      };
+
+      // 뷰포트 상태 (픽셀당 단위 스케일 및 중심 오프셋)
+      let view = {
+        scale: 55, // 1단위당 CSS 픽셀 수
+        offsetX: 0,
+        offsetY: 0
+      };
+
+      // 부동소수점 오차 정리
+      function cleanZero(val) {
+        return Math.abs(val) < EPS ? 0 : val;
+      }
+
+      // 깔끔한 숫자 포맷팅 (최대 소수점 4자리, 불필요한 0 제거)
+      function fmtNum(val) {
+        const v = cleanZero(val);
+        if (v === 0) return '0';
+        const rounded = Math.round(v * 10000) / 10000;
+        if (Math.abs(rounded) < EPS) return '0';
+        return Number(rounded.toFixed(4)).toString();
+      }
+
+      // 이차곡선 방정식 문자열 포맷터
+      function formatEquation(coeffs, xSym = 'x', ySym = 'y') {
+        const terms = [
+          { val: coeffs.A, sym: `${xSym}²` },
+          { val: coeffs.B, sym: `${xSym}${ySym}` },
+          { val: coeffs.C, sym: `${ySym}²` },
+          { val: coeffs.D, sym: `${xSym}` },
+          { val: coeffs.E, sym: `${ySym}` },
+          { val: coeffs.F, sym: '' }
+        ];
+
+        let str = '';
+        for (const t of terms) {
+          const v = cleanZero(t.val);
+          if (v === 0) continue;
+
+          const sign = v < 0 ? (str === '' ? '-' : ' - ') : (str === '' ? '' : ' + ');
+          const absV = Math.abs(v);
+          let numStr = fmtNum(absV);
+
+          if (t.sym !== '' && Math.abs(absV - 1) < EPS) {
+            numStr = '';
+          }
+
+          str += `${sign}${numStr}${t.sym}`;
+        }
+
+        return (str === '' ? '0' : str) + ' = 0';
+      }
+
+      // 판별식을 이용한 이차곡선 분류
+      function classifyConic(A, B, C, D, E, F) {
+        A = cleanZero(A);
+        B = cleanZero(B);
+        C = cleanZero(C);
+        if (A === 0 && B === 0 && C === 0) {
+          return (cleanZero(D) === 0 && cleanZero(E) === 0) ? '상수식' : '직선 (1차식)';
+        }
+        const disc = cleanZero(B * B - 4 * A * C);
+        if (disc < 0) {
+          if (Math.abs(A - C) < EPS && B === 0) return '원 / 타원 (Circle/Ellipse)';
+          return '타원 (Ellipse)';
+        } else if (disc > 0) {
+          return '쌍곡선 (Hyperbola)';
+        } else {
+          return '포물선 (Parabola)';
+        }
+      }
+
+      // 행렬 변환 계산 (45도 회전)
+      function computeRotation45(orig) {
+        const { A, B, C, D, E, F } = orig;
+        const halfB = B / 2;
+
+        // Q = [[A, B/2], [B/2, C]]
+        // R = (1/sqrt(2)) * [[1, -1], [1, 1]]
+        // Q * R = (1/sqrt(2)) * [[A + B/2, -A + B/2], [B/2 + C, -B/2 + C]]
+        const qr11 = (A + halfB) * INV_SQRT2;
+        const qr12 = (-A + halfB) * INV_SQRT2;
+        const qr21 = (halfB + C) * INV_SQRT2;
+        const qr22 = (-halfB + C) * INV_SQRT2;
+
+        // Q' = R^T * Q * R
+        const Qp11 = cleanZero((A + B + C) / 2);
+        const Qp12 = cleanZero((C - A) / 2);
+        const Qp21 = cleanZero((C - A) / 2);
+        const Qp22 = cleanZero((A - B + C) / 2);
+
+        // K' = K * R = [D, E] * R
+        const Dp = cleanZero((D + E) * INV_SQRT2);
+        const Ep = cleanZero((-D + E) * INV_SQRT2);
+        const Fp = cleanZero(F);
+
+        const trans = {
+          A: Qp11,
+          B: cleanZero(2 * Qp12),
+          C: Qp22,
+          D: Dp,
+          E: Ep,
+          F: Fp
+        };
+
+        return {
+          halfB: cleanZero(halfB),
+          QR: [
+            [cleanZero(qr11), cleanZero(qr12)],
+            [cleanZero(qr21), cleanZero(qr22)]
+          ],
+          Qp: [
+            [Qp11, Qp12],
+            [Qp21, Qp22]
+          ],
+          Kp: [Dp, Ep],
+          trans
+        };
+      }
+
+      // KaTeX 렌더링 헬퍼 (로드 전/오프라인 시 폴백 HTML 유지)
+      function renderMathBlock(el, tex, fallbackHtml) {
+        el.dataset.tex = tex;
+        if (window.katex) {
+          try {
+            window.katex.render(tex, el, { displayMode: true, throwOnError: false });
+            return;
+          } catch (e) {
+            // 폴백으로 진행
+          }
+        }
+        el.innerHTML = fallbackHtml;
+      }
+
+      window.onKatexLoaded = function () {
+        [step1Math, step2Math, step3Math, step4Math].forEach((el) => {
+          if (el.dataset.tex) {
+            window.katex.render(el.dataset.tex, el, { displayMode: true, throwOnError: false });
+          }
+        });
+      };
+
+      // 수식 및 계산 과정 UI 업데이트
+      function updateMathUI() {
+        const orig = {
+          A: parseFloat(inputs.A.value) || 0,
+          B: parseFloat(inputs.B.value) || 0,
+          C: parseFloat(inputs.C.value) || 0,
+          D: parseFloat(inputs.D.value) || 0,
+          E: parseFloat(inputs.E.value) || 0,
+          F: parseFloat(inputs.F.value) || 0
+        };
+
+        const res = computeRotation45(orig);
+        state.orig = orig;
+        state.trans = res.trans;
+
+        // 상단 미리보기 및 이차곡선 종류 배지
+        origEqPreview.textContent = formatEquation(orig, 'x', 'y');
+        transEqPreview.textContent = formatEquation(res.trans, "x'", "y'");
+        conicBadge.textContent = classifyConic(orig.A, orig.B, orig.C, orig.D, orig.E, orig.F);
+
+        const sA = fmtNum(orig.A), sHB = fmtNum(res.halfB), sC = fmtNum(orig.C);
+        const sD = fmtNum(orig.D), sE = fmtNum(orig.E), sF = fmtNum(orig.F);
+
+        // Step 1: 행렬 표현
+        const tex1 = `\\mathbf{x}^T Q \\mathbf{x} + K \\mathbf{x} + F = 0, \\quad Q = \\begin{pmatrix} ${sA} & ${sHB} \\\\ ${sHB} & ${sC} \\end{pmatrix}, \\quad K = \\begin{pmatrix} ${sD} & ${sE} \\end{pmatrix}, \\quad F = ${sF}`;
+        const fb1 = `<div class="fallback-math">
+          <b>x</b><sup>T</sup>Q<b>x</b> + K<b>x</b> + F = 0,&nbsp;
+          Q = <table class="mat"><tr><td>${sA}</td><td>${sHB}</td></tr><tr><td>${sHB}</td><td>${sC}</td></tr></table>,&nbsp;
+          K = <table class="mat"><tr><td>${sD}</td><td>${sE}</td></tr></table>,&nbsp;
+          F = ${sF}
+        </div>`;
+        renderMathBlock(step1Math, tex1, fb1);
+
+        // Step 2: 45도 회전 행렬
+        const tex2 = `\\mathbf{x} = R\\mathbf{x}', \\quad R = \\begin{pmatrix} \\cos 45^\\circ & -\\sin 45^\\circ \\\\ \\sin 45^\\circ & \\cos 45^\\circ \\end{pmatrix} = \\frac{1}{\\sqrt{2}} \\begin{pmatrix} 1 & -1 \\\\ 1 & 1 \\end{pmatrix} \\approx \\begin{pmatrix} 0.7071 & -0.7071 \\\\ 0.7071 & 0.7071 \\end{pmatrix}`;
+        const fb2 = `<div class="fallback-math">
+          <b>x</b> = R<b>x'</b>,&nbsp;
+          R = (1/√2) <table class="mat"><tr><td>1</td><td>-1</td></tr><tr><td>1</td><td>1</td></tr></table>
+          ≈ <table class="mat"><tr><td>0.7071</td><td>-0.7071</td></tr><tr><td>0.7071</td><td>0.7071</td></tr></table>
+        </div>`;
+        renderMathBlock(step2Math, tex2, fb2);
+
+        // Step 3: Q' = R^T Q R 및 K' = K R 계산
+        const q11 = fmtNum(res.Qp[0][0]), q12 = fmtNum(res.Qp[0][1]);
+        const q21 = fmtNum(res.Qp[1][0]), q22 = fmtNum(res.Qp[1][1]);
+        const dp = fmtNum(res.Kp[0]), ep = fmtNum(res.Kp[1]);
+
+        const tex3 = `\\begin{aligned}
+          Q' &= R^T Q R = \\frac{1}{2}\\begin{pmatrix} 1 & 1 \\\\ -1 & 1 \\end{pmatrix}\\begin{pmatrix} ${sA} & ${sHB} \\\\ ${sHB} & ${sC} \\end{pmatrix}\\begin{pmatrix} 1 & -1 \\\\ 1 & 1 \\end{pmatrix} = \\begin{pmatrix} ${q11} & ${q12} \\\\ ${q21} & ${q22} \\end{pmatrix} \\\\[6pt]
+          K' &= K R = \\begin{pmatrix} ${sD} & ${sE} \\end{pmatrix} \\frac{1}{\\sqrt{2}}\\begin{pmatrix} 1 & -1 \\\\ 1 & 1 \\end{pmatrix} = \\begin{pmatrix} ${dp} & ${ep} \\end{pmatrix}
+        \\end{aligned}`;
+        const fb3 = `<div class="fallback-math" style="flex-direction:column; align-items:flex-start;">
+          <div>Q' = R<sup>T</sup>QR = <table class="mat"><tr><td>${q11}</td><td>${q12}</td></tr><tr><td>${q21}</td><td>${q22}</td></tr></table></div>
+          <div>K' = KR = <table class="mat"><tr><td>${dp}</td><td>${ep}</td></tr></table></div>
+        </div>`;
+        renderMathBlock(step3Math, tex3, fb3);
+
+        // Step 4: 변환된 최종 계수 대입
+        const tA = fmtNum(res.trans.A), tB = fmtNum(res.trans.B), tC = fmtNum(res.trans.C);
+        const tD = fmtNum(res.trans.D), tE = fmtNum(res.trans.E), tF = fmtNum(res.trans.F);
+        const tex4 = `A' = ${tA}, \\quad B' = 2(${q12}) = ${tB}, \\quad C' = ${tC}, \\quad D' = ${tD}, \\quad E' = ${tE}, \\quad F' = ${tF}`;
+        const fb4 = `<div class="fallback-math">
+          A' = ${tA}, &nbsp; B' = ${tB}, &nbsp; C' = ${tC}, &nbsp; D' = ${tD}, &nbsp; E' = ${tE}, &nbsp; F' = ${tF}
+        </div>`;
+        renderMathBlock(step4Math, tex4, fb4);
+
+        drawGraph();
+      }
+
+      // 이차함수 값 평가 f(x, y)
+      function evalConic(c, x, y) {
+        return c.A * x * x + c.B * x * y + c.C * y * y + c.D * x + c.E * y + c.F;
+      }
+
+      // 마칭 스퀘어(Marching Squares) 알고리즘으로 음함수 f(x,y)=0 그리기
+      function drawImplicitCurve(coeffs, color, lineWidth, width, height) {
+        const { A, B, C, D, E, F } = coeffs;
+        if (Math.abs(A) < EPS && Math.abs(B) < EPS && Math.abs(C) < EPS &&
+            Math.abs(D) < EPS && Math.abs(E) < EPS && Math.abs(F) < EPS) {
+          return;
+        }
+
+        const cellSize = 4; // 고해상도 셀 크기 (4px)
+        const cols = Math.ceil(width / cellSize);
+        const rows = Math.ceil(height / cellSize);
+
+        const cx = width / 2 + view.offsetX;
+        const cy = height / 2 + view.offsetY;
+        const invScale = 1 / view.scale;
+
+        // 그리드 꼭짓점 함수값 캐싱
+        const grid = new Float64Array((rows + 1) * (cols + 1));
+        for (let r = 0; r <= rows; r++) {
+          const py = r * cellSize;
+          const y = (cy - py) * invScale;
+          const rowOffset = r * (cols + 1);
+          for (let c = 0; c <= cols; c++) {
+            const px = c * cellSize;
+            const x = (px - cx) * invScale;
+            grid[rowOffset + c] = evalConic(coeffs, x, y);
+          }
+        }
+
+        ctx.save();
+        ctx.strokeStyle = color;
+        ctx.lineWidth = lineWidth;
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        ctx.beginPath();
+
+        function interp(p1, p2, v1, v2) {
+          const denom = v1 - v2;
+          if (Math.abs(denom) < 1e-18) return (p1 + p2) * 0.5;
+          const t = v1 / denom;
+          return p1 + t * (p2 - p1);
+        }
+
+        for (let r = 0; r < rows; r++) {
+          const y0 = r * cellSize;
+          const y1 = y0 + cellSize;
+          const r0 = r * (cols + 1);
+          const r1 = (r + 1) * (cols + 1);
+
+          for (let c = 0; c < cols; c++) {
+            const vTL = grid[r0 + c];
+            const vTR = grid[r0 + c + 1];
+            const vBR = grid[r1 + c + 1];
+            const vBL = grid[r1 + c];
+
+            // 부호 비트마스크 (TL=8, TR=4, BR=2, BL=1)
+            let code = 0;
+            if (vTL >= 0) code |= 8;
+            if (vTR >= 0) code |= 4;
+            if (vBR >= 0) code |= 2;
+            if (vBL >= 0) code |= 1;
+
+            if (code === 0 || code === 15) continue;
+
+            const x0 = c * cellSize;
+            const x1 = x0 + cellSize;
+
+            // 각 변의 영점 보간 좌표
+            // Top: TL - TR, Right: TR - BR, Bottom: BL - BR, Left: TL - BL
+            const topX = interp(x0, x1, vTL, vTR);
+            const rightY = interp(y0, y1, vTR, vBR);
+            const botX = interp(x0, x1, vBL, vBR);
+            const leftY = interp(y0, y1, vTL, vBL);
+
+            switch (code) {
+              case 1:
+              case 14:
+                ctx.moveTo(x0, leftY);
+                ctx.lineTo(botX, y1);
+                break;
+              case 2:
+              case 13:
+                ctx.moveTo(botX, y1);
+                ctx.lineTo(x1, rightY);
+                break;
+              case 3:
+              case 12:
+                ctx.moveTo(x0, leftY);
+                ctx.lineTo(x1, rightY);
+                break;
+              case 4:
+              case 11:
+                ctx.moveTo(topX, y0);
+                ctx.lineTo(x1, rightY);
+                break;
+              case 5: {
+                // 안장점(Saddle point) 모호성 해결: 셀 중앙값 평가
+                const midX = ((x0 + x1) * 0.5 - cx) * invScale;
+                const midY = (cy - (y0 + y1) * 0.5) * invScale;
+                const vMid = evalConic(coeffs, midX, midY);
+                if (vMid >= 0) {
+                  ctx.moveTo(x0, leftY);
+                  ctx.lineTo(topX, y0);
+                  ctx.moveTo(botX, y1);
+                  ctx.lineTo(x1, rightY);
+                } else {
+                  ctx.moveTo(x0, leftY);
+                  ctx.lineTo(botX, y1);
+                  ctx.moveTo(topX, y0);
+                  ctx.lineTo(x1, rightY);
+                }
+                break;
+              }
+              case 6:
+              case 9:
+                ctx.moveTo(topX, y0);
+                ctx.lineTo(botX, y1);
+                break;
+              case 7:
+              case 8:
+                ctx.moveTo(x0, leftY);
+                ctx.lineTo(topX, y0);
+                break;
+              case 10: {
+                // 안장점(Saddle point) 모호성 해결
+                const midX = ((x0 + x1) * 0.5 - cx) * invScale;
+                const midY = (cy - (y0 + y1) * 0.5) * invScale;
+                const vMid = evalConic(coeffs, midX, midY);
+                if (vMid >= 0) {
+                  ctx.moveTo(x0, leftY);
+                  ctx.lineTo(botX, y1);
+                  ctx.moveTo(topX, y0);
+                  ctx.lineTo(x1, rightY);
+                } else {
+                  ctx.moveTo(x0, leftY);
+                  ctx.lineTo(topX, y0);
+                  ctx.moveTo(botX, y1);
+                  ctx.lineTo(x1, rightY);
+                }
+                break;
+              }
+            }
+          }
+        }
+
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      // 적절한 눈금 간격 계산 (1, 2, 5 * 10^n)
+      function getNiceStep(scale) {
+        const targetPx = 65;
+        const rawStep = targetPx / scale;
+        const mag = Math.pow(10, Math.floor(Math.log10(rawStep)));
+        const norm = rawStep / mag;
+        if (norm < 1.5) return 1 * mag;
+        if (norm < 3.5) return 2 * mag;
+        if (norm < 7.5) return 5 * mag;
+        return 10 * mag;
+      }
+
+      // 전체 좌표평면 및 그래프 그리기
+      function drawGraph() {
+        const rect = canvasWrapper.getBoundingClientRect();
+        const width = rect.width;
+        const height = rect.height;
+        if (width === 0 || height === 0) return;
+
+        const dpr = window.devicePixelRatio || 1;
+        if (canvas.width !== Math.floor(width * dpr) || canvas.height !== Math.floor(height * dpr)) {
+          canvas.width = Math.floor(width * dpr);
+          canvas.height = Math.floor(height * dpr);
+        }
+
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        ctx.clearRect(0, 0, width, height);
+
+        const cx = width / 2 + view.offsetX;
+        const cy = height / 2 + view.offsetY;
+        const step = getNiceStep(view.scale);
+        const stepPx = step * view.scale;
+
+        // 1. 모눈종이 격자 (Grid)
+        ctx.save();
+        ctx.strokeStyle = '#f1f5f9';
+        ctx.lineWidth = 1;
+
+        const startX = cx % stepPx;
+        for (let x = startX; x <= width; x += stepPx) {
+          ctx.beginPath();
+          ctx.moveTo(x, 0);
+          ctx.lineTo(x, height);
+          ctx.stroke();
+        }
+        const startY = cy % stepPx;
+        for (let y = startY; y <= height; y += stepPx) {
+          ctx.beginPath();
+          ctx.moveTo(0, y);
+          ctx.lineTo(width, y);
+          ctx.stroke();
+        }
+        ctx.restore();
+
+        // 2. 45도 회전 보조축 (y = x, y = -x) 연한 하늘색 점선
+        if (toggleRotAxes.checked) {
+          ctx.save();
+          ctx.strokeStyle = '#38bdf8';
+          ctx.lineWidth = 1.6;
+          ctx.setLineDash([7, 6]);
+
+          const diag = Math.hypot(width, height) + 100;
+
+          // y = x (화면상 우상향: dx = +1, dy = -1)
+          ctx.beginPath();
+          ctx.moveTo(cx - diag, cy + diag);
+          ctx.lineTo(cx + diag, cy - diag);
+          ctx.stroke();
+
+          // y = -x (화면상 좌상향: dx = -1, dy = -1)
+          ctx.beginPath();
+          ctx.moveTo(cx - diag, cy - diag);
+          ctx.lineTo(cx + diag, cy + diag);
+          ctx.stroke();
+
+          // 회전축 라벨
+          ctx.setLineDash([]);
+          ctx.fillStyle = '#0284c7';
+          ctx.font = '600 12px sans-serif';
+          const labelOffset = Math.min(width, height) * 0.34;
+          ctx.fillText("x'축 (y = x)", cx + labelOffset + 6, cy - labelOffset);
+          ctx.fillText("y'축 (y = -x)", cx - labelOffset - 76, cy - labelOffset);
+          ctx.restore();
+        }
+
+        // 3. 기본 x, y 좌표축 (진회색/검은색 실선)
+        ctx.save();
+        ctx.strokeStyle = '#334155';
+        ctx.lineWidth = 1.5;
+
+        // x축
+        if (cy >= 0 && cy <= height) {
+          ctx.beginPath();
+          ctx.moveTo(0, cy);
+          ctx.lineTo(width, cy);
+          ctx.stroke();
+        }
+        // y축
+        if (cx >= 0 && cx <= width) {
+          ctx.beginPath();
+          ctx.moveTo(cx, 0);
+          ctx.lineTo(cx, height);
+          ctx.stroke();
+        }
+
+        // 눈금 숫자 표시
+        ctx.fillStyle = '#64748b';
+        ctx.font = '11px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'top';
+
+        const minUnitX = Math.floor((-cx) / view.scale / step) * step;
+        const maxUnitX = Math.ceil((width - cx) / view.scale / step) * step;
+        for (let u = minUnitX; u <= maxUnitX; u += step) {
+          const val = cleanZero(u);
+          if (val === 0) continue;
+          const px = cx + val * view.scale;
+          const py = Math.min(Math.max(cy + 5, 4), height - 16);
+          ctx.fillText(fmtNum(val), px, py);
+        }
+
+        ctx.textAlign = 'right';
+        ctx.textBaseline = 'middle';
+        const minUnitY = Math.floor((cy - height) / view.scale / step) * step;
+        const maxUnitY = Math.ceil(cy / view.scale / step) * step;
+        for (let u = minUnitY; u <= maxUnitY; u += step) {
+          const val = cleanZero(u);
+          if (val === 0) continue;
+          const px = Math.min(Math.max(cx - 6, 26), width - 4);
+          const py = cy - val * view.scale;
+          ctx.fillText(fmtNum(val), px, py);
+        }
+
+        // 원점 O 및 축 이름
+        if (cx >= 10 && cx <= width - 10 && cy >= 10 && cy <= height - 10) {
+          ctx.fillText('O', cx - 6, cy + 10);
+        }
+        ctx.fillStyle = '#0f172a';
+        ctx.font = '700 12px sans-serif';
+        if (cy >= 14 && cy <= height - 14) {
+          ctx.fillText('x', width - 10, cy - 12);
+        }
+        if (cx >= 14 && cx <= width - 14) {
+          ctx.fillText('y', cx + 14, 14);
+        }
+        ctx.restore();
+
+        // 4. 원래 이차곡선 (빨간색 #ef4444, 두께 2.5px)
+        if (toggleOrig.checked) {
+          drawImplicitCurve(state.orig, '#ef4444', 2.5, width, height);
+        }
+
+        // 5. 45도 회전 변환 이차곡선 (파란색 #3b82f6, 두께 2.5px)
+        if (toggleTrans.checked) {
+          drawImplicitCurve(state.trans, '#3b82f6', 2.5, width, height);
+        }
+      }
+
+      // 프리셋 버튼 이벤트
+      document.querySelectorAll('.preset-btn').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          document.querySelectorAll('.preset-btn').forEach((b) => b.classList.remove('active'));
+          btn.classList.add('active');
+          const p = PRESETS[btn.dataset.preset];
+          if (!p) return;
+          inputs.A.value = p.A;
+          inputs.B.value = p.B;
+          inputs.C.value = p.C;
+          inputs.D.value = p.D;
+          inputs.E.value = p.E;
+          inputs.F.value = p.F;
+          updateMathUI();
+        });
+      });
+
+      // 입력창 실시간 이벤트
+      Object.values(inputs).forEach((inp) => {
+        inp.addEventListener('input', () => {
+          document.querySelectorAll('.preset-btn').forEach((b) => b.classList.remove('active'));
+          updateMathUI();
+        });
+      });
+
+      // 범례 체크박스 토글
+      [toggleOrig, toggleTrans, toggleRotAxes].forEach((chk) => {
+        chk.addEventListener('change', drawGraph);
+      });
+
+      // 마우스 휠 줌 (마우스 포인터 위치 기준 확대/축소)
+      canvasWrapper.addEventListener('wheel', (e) => {
+        e.preventDefault();
+        const rect = canvasWrapper.getBoundingClientRect();
+        const mouseX = e.clientX - rect.left;
+        const mouseY = e.clientY - rect.top;
+
+        const cx = rect.width / 2 + view.offsetX;
+        const cy = rect.height / 2 + view.offsetY;
+
+        const worldX = (mouseX - cx) / view.scale;
+        const worldY = (cy - mouseY) / view.scale;
+
+        const zoomFactor = e.deltaY < 0 ? 1.15 : 1 / 1.15;
+        const newScale = Math.min(Math.max(view.scale * zoomFactor, 8), 600);
+
+        view.scale = newScale;
+        view.offsetX = mouseX - rect.width / 2 - worldX * newScale;
+        view.offsetY = mouseY - rect.height / 2 + worldY * newScale;
+
+        drawGraph();
+      }, { passive: false });
+
+      // 드래그 이동 (Pan) 및 좌표 표시
+      let isDragging = false;
+      let dragStartX = 0;
+      let dragStartY = 0;
+
+      canvasWrapper.addEventListener('mousedown', (e) => {
+        if (e.target.closest('.legend-card') || e.target.closest('.canvas-controls')) return;
+        isDragging = true;
+        dragStartX = e.clientX - view.offsetX;
+        dragStartY = e.clientY - view.offsetY;
+      });
+
+      window.addEventListener('mousemove', (e) => {
+        const rect = canvasWrapper.getBoundingClientRect();
+        if (isDragging) {
+          view.offsetX = e.clientX - dragStartX;
+          view.offsetY = e.clientY - dragStartY;
+          drawGraph();
+        }
+        if (e.clientX >= rect.left && e.clientX <= rect.right &&
+            e.clientY >= rect.top && e.clientY <= rect.bottom) {
+          const cx = rect.width / 2 + view.offsetX;
+          const cy = rect.height / 2 + view.offsetY;
+          const wx = (e.clientX - rect.left - cx) / view.scale;
+          const wy = (cy - (e.clientY - rect.top)) / view.scale;
+          coordReadout.textContent = `x: ${wx.toFixed(2)}, y: ${wy.toFixed(2)}`;
+        }
+      });
+
+      window.addEventListener('mouseup', () => {
+        isDragging = false;
+      });
+
+      // 버튼 줌 및 초기화
+      document.getElementById('zoomInBtn').addEventListener('click', () => {
+        view.scale = Math.min(view.scale * 1.25, 600);
+        drawGraph();
+      });
+
+      document.getElementById('zoomOutBtn').addEventListener('click', () => {
+        view.scale = Math.max(view.scale / 1.25, 8);
+        drawGraph();
+      });
+
+      document.getElementById('resetViewBtn').addEventListener('click', () => {
+        view.scale = 55;
+        view.offsetX = 0;
+        view.offsetY = 0;
+        drawGraph();
+      });
+
+      // 창 크기 변경 대응
+      window.addEventListener('resize', drawGraph);
+
+      // 초기 실행
+      updateMathUI();
+    })();
+  </script>
+</body>
+</html>
