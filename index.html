@@ -1,0 +1,1481 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>이차곡선 45° 축 회전 및 행렬 이차변환 시각화</title>
+  <!-- Open Graph 메타태그 (링크 공유 시 미리보기 카드 지원) -->
+  <meta property="og:title" content="이차곡선 45° 축 회전 및 행렬 이차변환 시각화" />
+  <meta property="og:description" content="일반 이차곡선 Ax² + Bxy + Cy² + Dx + Ey + F = 0 의 45° 직교변환 계산 과정 및 그래프 비교 웹 애플리케이션 (공동 제작: 2509 유세현 · 2519 장민기)" />
+  <meta property="og:type" content="website" />
+
+  <!-- KaTeX CDN -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css" crossorigin="anonymous">
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js" crossorigin="anonymous" onload="window.onKatexLoaded && window.onKatexLoaded()"></script>
+  <style>
+    :root {
+      --bg-app: #f1f5f9;
+      --bg-panel: #ffffff;
+      --bg-subtle: #f8fafc;
+      --border: #e2e8f0;
+      --text-main: #0f172a;
+      --text-muted: #475569;
+      --text-light: #64748b;
+      --red: #ef4444;
+      --red-bg: #fef2f2;
+      --blue: #3b82f6;
+      --blue-bg: #eff6ff;
+      --sky: #0ea5e9;
+      --accent: #2563eb;
+      --radius: 12px;
+      --shadow: 0 4px 16px rgba(15, 23, 42, 0.06);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Noto Sans KR', sans-serif;
+      background-color: var(--bg-app);
+      color: var(--text-main);
+      line-height: 1.55;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* 상단 헤더 */
+    header {
+      background: #0f172a;
+      color: #f8fafc;
+      padding: 13px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 12px;
+      border-bottom: 1px solid #1e293b;
+    }
+
+    .header-left {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    header h1 {
+      font-size: 1.12rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    header h1 span.badge {
+      font-size: 0.74rem;
+      font-weight: 600;
+      background: rgba(59, 130, 246, 0.22);
+      color: #93c5fd;
+      border: 1px solid rgba(59, 130, 246, 0.4);
+      padding: 2px 8px;
+      border-radius: 999px;
+    }
+
+    header p {
+      font-size: 0.81rem;
+      color: #94a3b8;
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .action-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.82rem;
+      font-weight: 600;
+      padding: 7px 13px;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      border: 1px solid transparent;
+    }
+
+    .btn-share {
+      background: #2563eb;
+      color: #ffffff;
+      border-color: #3b82f6;
+    }
+
+    .btn-share:hover {
+      background: #1d4ed8;
+    }
+
+    .btn-download {
+      background: #1e293b;
+      color: #e2e8f0;
+      border-color: #334155;
+    }
+
+    .btn-download:hover {
+      background: #334155;
+      color: #ffffff;
+    }
+
+    /* 토스트 알림 */
+    .toast {
+      position: fixed;
+      top: 72px;
+      left: 50%;
+      transform: translateX(-50%) translateY(-12px);
+      background: #0f172a;
+      color: #f8fafc;
+      border: 1px solid #334155;
+      padding: 10px 18px;
+      border-radius: 10px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      box-shadow: 0 10px 25px rgba(15, 23, 42, 0.25);
+      opacity: 0;
+      pointer-events: none;
+      transition: all 0.25s ease;
+      z-index: 1000;
+      text-align: center;
+      max-width: 90vw;
+    }
+
+    .toast.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+
+    .toast.warn {
+      background: #1e293b;
+      border-color: #f59e0b;
+      color: #fef3c7;
+    }
+
+    /* 메인 2단 대시보드 레이아웃 */
+    .dashboard {
+      display: grid;
+      grid-template-columns: 490px 1fr;
+      gap: 18px;
+      padding: 18px;
+      flex: 1;
+      max-width: 1720px;
+      width: 100%;
+      margin: 0 auto;
+    }
+
+    /* 좌측 패널: 입력 + 행렬 계산 과정 */
+    .left-panel {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      max-height: calc(100vh - 88px);
+      overflow-y: auto;
+      padding-right: 4px;
+    }
+
+    .left-panel::-webkit-scrollbar {
+      width: 6px;
+    }
+    .left-panel::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 3px;
+    }
+
+    .card {
+      background: var(--bg-panel);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 18px;
+      box-shadow: var(--shadow);
+    }
+
+    .card-title {
+      font-size: 0.96rem;
+      font-weight: 700;
+      color: var(--text-main);
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .conic-type-badge {
+      font-size: 0.76rem;
+      font-weight: 600;
+      padding: 3px 9px;
+      border-radius: 6px;
+      background: #f1f5f9;
+      color: #334155;
+      border: 1px solid #cbd5e1;
+    }
+
+    /* 프리셋 버튼 */
+    .preset-group {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-bottom: 14px;
+    }
+
+    .preset-btn {
+      font-size: 0.78rem;
+      font-weight: 600;
+      padding: 6px 10px;
+      border-radius: 7px;
+      border: 1px solid #cbd5e1;
+      background: var(--bg-subtle);
+      color: #334155;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .preset-btn:hover {
+      background: #e2e8f0;
+      border-color: #94a3b8;
+    }
+
+    .preset-btn.active {
+      background: #eff6ff;
+      border-color: var(--blue);
+      color: #1d4ed8;
+    }
+
+    /* 계수 입력 그리드 */
+    .coeff-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+
+    .input-box {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      background: var(--bg-subtle);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 8px 10px;
+      transition: border-color 0.15s;
+    }
+
+    .input-box:focus-within {
+      border-color: var(--blue);
+      background: #ffffff;
+    }
+
+    .input-box label {
+      font-size: 0.78rem;
+      font-weight: 700;
+      color: var(--text-muted);
+      display: flex;
+      justify-content: space-between;
+    }
+
+    .input-box label span {
+      font-weight: 500;
+      color: var(--text-light);
+    }
+
+    .input-box input {
+      width: 100%;
+      border: none;
+      background: transparent;
+      font-size: 0.98rem;
+      font-weight: 700;
+      color: var(--text-main);
+      outline: none;
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* 실시간 수식 미리보기 */
+    .preview-box {
+      background: var(--red-bg);
+      border: 1px solid #fecaca;
+      border-radius: 8px;
+      padding: 10px 14px;
+    }
+
+    .preview-label {
+      font-size: 0.74rem;
+      font-weight: 700;
+      color: #b91c1c;
+      margin-bottom: 3px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .dot-red {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--red);
+      display: inline-block;
+    }
+
+    .dot-blue {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--blue);
+      display: inline-block;
+    }
+
+    .preview-eq {
+      font-family: 'Cambria Math', 'Times New Roman', serif;
+      font-size: 1.05rem;
+      font-weight: 700;
+      color: #7f1d1d;
+      word-break: break-all;
+    }
+
+    /* 단계별 행렬 계산 과정 */
+    .step-list {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .step-item {
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 13px 14px;
+      background: var(--bg-subtle);
+    }
+
+    .step-header {
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: #1e293b;
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 7px;
+    }
+
+    .step-num {
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: #1e293b;
+      color: #ffffff;
+      font-size: 0.74rem;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .step-desc {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      margin-bottom: 8px;
+    }
+
+    .math-display {
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      padding: 10px 12px;
+      overflow-x: auto;
+      font-size: 0.92rem;
+    }
+
+    .math-display .katex-display {
+      margin: 0.35em 0;
+    }
+
+    /* CSS 폴백 행렬 스타일 */
+    .fallback-math {
+      font-family: 'Cambria Math', 'Times New Roman', serif;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px;
+      line-height: 1.4;
+    }
+    .mat {
+      display: inline-table;
+      vertical-align: middle;
+      border-left: 1.8px solid #1e293b;
+      border-right: 1.8px solid #1e293b;
+      border-radius: 4px;
+      padding: 2px 6px;
+      text-align: center;
+    }
+    .mat td {
+      padding: 2px 7px;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .final-eq-box {
+      background: var(--blue-bg);
+      border: 1px solid #bfdbfe;
+      border-radius: 8px;
+      padding: 11px 14px;
+      margin-top: 6px;
+    }
+
+    .final-eq-label {
+      font-size: 0.74rem;
+      font-weight: 700;
+      color: #1d4ed8;
+      margin-bottom: 3px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .final-eq-text {
+      font-family: 'Cambria Math', 'Times New Roman', serif;
+      font-size: 1.06rem;
+      font-weight: 700;
+      color: #1e3a8a;
+      word-break: break-all;
+    }
+
+    /* 우측 패널: 인터랙티브 그래프 캔버스 */
+    .right-panel {
+      background: var(--bg-panel);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      position: relative;
+      overflow: hidden;
+      min-height: 540px;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .canvas-wrapper {
+      position: relative;
+      flex: 1;
+      width: 100%;
+      height: 100%;
+      cursor: grab;
+      user-select: none;
+    }
+
+    .canvas-wrapper:active {
+      cursor: grabbing;
+    }
+
+    canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+    }
+
+    /* 우측 상단 범례(Legend) */
+    .legend-card {
+      position: absolute;
+      top: 14px;
+      right: 14px;
+      background: rgba(255, 255, 255, 0.94);
+      backdrop-filter: blur(8px);
+      border: 1px solid #cbd5e1;
+      border-radius: 10px;
+      padding: 11px 14px;
+      box-shadow: 0 4px 12px rgba(15, 23, 42, 0.08);
+      font-size: 0.8rem;
+      display: flex;
+      flex-direction: column;
+      gap: 7px;
+      z-index: 10;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      cursor: pointer;
+      color: #1e293b;
+      font-weight: 600;
+    }
+
+    .legend-item input[type="checkbox"] {
+      accent-color: #2563eb;
+      cursor: pointer;
+    }
+
+    .line-sample {
+      width: 22px;
+      height: 3px;
+      border-radius: 2px;
+      display: inline-block;
+    }
+
+    .line-red {
+      background: var(--red);
+    }
+
+    .line-blue {
+      background: var(--blue);
+    }
+
+    .line-sky-dashed {
+      height: 0;
+      border-top: 2px dashed var(--sky);
+    }
+
+    /* 좌측 하단 컨트롤 및 좌표 표시 */
+    .canvas-controls {
+      position: absolute;
+      bottom: 14px;
+      left: 14px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(255, 255, 255, 0.94);
+      backdrop-filter: blur(8px);
+      border: 1px solid #cbd5e1;
+      border-radius: 9px;
+      padding: 6px 10px;
+      box-shadow: 0 4px 12px rgba(15, 23, 42, 0.08);
+      z-index: 10;
+    }
+
+    .ctrl-btn {
+      border: 1px solid #cbd5e1;
+      background: #ffffff;
+      color: #1e293b;
+      font-size: 0.82rem;
+      font-weight: 700;
+      padding: 5px 10px;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+
+    .ctrl-btn:hover {
+      background: #f1f5f9;
+    }
+
+    .coord-readout {
+      position: absolute;
+      bottom: 14px;
+      right: 14px;
+      background: rgba(15, 23, 42, 0.84);
+      color: #f8fafc;
+      font-size: 0.78rem;
+      font-variant-numeric: tabular-nums;
+      padding: 5px 10px;
+      border-radius: 7px;
+      pointer-events: none;
+      z-index: 10;
+    }
+
+    /* 반응형 (태블릿/모바일 상하 배치) */
+    @media (max-width: 1024px) {
+      .dashboard {
+        grid-template-columns: 1fr;
+        padding: 12px;
+      }
+      .left-panel {
+        max-height: none;
+        overflow-y: visible;
+        padding-right: 0;
+      }
+      .right-panel {
+        height: 520px;
+        min-height: 440px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="header-left">
+      <h1>
+        이차곡선 45° 축 회전 변환기
+        <span class="badge">행렬의 이차변환 · Orthogonal Transformation</span>
+      </h1>
+      <p>기하 기반 융합 프로젝트 · 공동 제작: 2509 유세현, 2519 장민기</p>
+    </div>
+    <div class="header-actions">
+      <button type="button" class="action-btn btn-download" id="savePngBtn" title="현재 그래프를 PNG 이미지로 저장">
+        <span>📷 그래프 이미지 저장</span>
+      </button>
+      <button type="button" class="action-btn btn-share" id="shareLinkBtn" title="현재 계수가 포함된 공유 URL 복사">
+        <span>🔗 현재 수식 링크 복사</span>
+      </button>
+    </div>
+  </header>
+
+  <div class="toast" id="toastMsg"></div>
+
+  <main class="dashboard">
+    <!-- 좌측: 입력 및 행렬 계산 과정 -->
+    <section class="left-panel">
+      <!-- 1. 계수 입력 및 프리셋 -->
+      <div class="card">
+        <div class="card-title">
+          <span>1. 일반 이차곡선 방정식 입력</span>
+          <span id="conicBadge" class="conic-type-badge">쌍곡선 (Hyperbola)</span>
+        </div>
+
+        <div class="preset-group" id="presetGroup">
+          <button type="button" class="preset-btn active" data-preset="hyperbola">예1) 쌍곡선 (xy - 1 = 0)</button>
+          <button type="button" class="preset-btn" data-preset="ellipse">예2) 회전된 타원</button>
+          <button type="button" class="preset-btn" data-preset="parabola">예3) 회전된 포물선</button>
+          <button type="button" class="preset-btn" data-preset="general">예4) 일반형 (A ≠ C)</button>
+        </div>
+
+        <div class="coeff-grid">
+          <div class="input-box">
+            <label for="inA">A <span>(x² 계수)</span></label>
+            <input type="number" id="inA" step="any" value="0" />
+          </div>
+          <div class="input-box">
+            <label for="inB">B <span>(xy 계수)</span></label>
+            <input type="number" id="inB" step="any" value="1" />
+          </div>
+          <div class="input-box">
+            <label for="inC">C <span>(y² 계수)</span></label>
+            <input type="number" id="inC" step="any" value="0" />
+          </div>
+          <div class="input-box">
+            <label for="inD">D <span>(x 계수)</span></label>
+            <input type="number" id="inD" step="any" value="0" />
+          </div>
+          <div class="input-box">
+            <label for="inE">E <span>(y 계수)</span></label>
+            <input type="number" id="inE" step="any" value="0" />
+          </div>
+          <div class="input-box">
+            <label for="inF">F <span>(상수항)</span></label>
+            <input type="number" id="inF" step="any" value="-1" />
+          </div>
+        </div>
+
+        <div class="preview-box">
+          <div class="preview-label"><span class="dot-red"></span>입력된 원래 이차곡선 방정식 (빨간색 그래프)</div>
+          <div class="preview-eq" id="origEqPreview">xy - 1 = 0</div>
+        </div>
+      </div>
+
+      <!-- 2. 행렬의 이차변환 계산 과정 -->
+      <div class="card">
+        <div class="card-title">
+          <span>2. 45° 축 회전 행렬 변환 과정</span>
+        </div>
+
+        <div class="step-list">
+          <!-- Step 1 -->
+          <div class="step-item">
+            <div class="step-header"><span class="step-num">1</span>원래 이차곡선의 행렬 표현</div>
+            <div class="step-desc">이차형식 대칭행렬 Q와 일차항 행벡터 K로 방정식을 행렬 형태로 나타냅니다.</div>
+            <div class="math-display" id="step1Math"></div>
+          </div>
+
+          <!-- Step 2 -->
+          <div class="step-item">
+            <div class="step-header"><span class="step-num">2</span>θ = 45° 회전 변환 행렬 정의</div>
+            <div class="step-desc">좌표축을 반시계 방향으로 45° 회전하는 직교행렬 R (R⁻¹ = Rᵀ)을 정의합니다.</div>
+            <div class="math-display" id="step2Math"></div>
+          </div>
+
+          <!-- Step 3 -->
+          <div class="step-item">
+            <div class="step-header"><span class="step-num">3</span>직교변환을 통한 새로운 행렬 계산 (Q' = RᵀQR, K' = KR)</div>
+            <div class="step-desc">x = Rx' 을 대입하면 x'ᵀ(RᵀQR)x' + (KR)x' + F = 0 이 됩니다.</div>
+            <div class="math-display" id="step3Math"></div>
+          </div>
+
+          <!-- Step 4 -->
+          <div class="step-item">
+            <div class="step-header"><span class="step-num">4</span>변환된 최종 이차곡선 방정식 도출</div>
+            <div class="step-desc">계산된 Q'과 K'의 성분으로부터 회전 좌표계 (x', y')에서의 방정식을 얻습니다.</div>
+            <div class="math-display" id="step4Math"></div>
+            <div class="final-eq-box">
+              <div class="final-eq-label"><span class="dot-blue"></span>45° 회전 변환된 방정식 (파란색 그래프)</div>
+              <div class="final-eq-text" id="transEqPreview">0.5x'² - 0.5y'² - 1 = 0</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 우측: 인터랙티브 그래프 캔버스 -->
+    <section class="right-panel">
+      <div class="canvas-wrapper" id="canvasWrapper">
+        <canvas id="graphCanvas"></canvas>
+
+        <!-- 범례 -->
+        <div class="legend-card">
+          <label class="legend-item">
+            <input type="checkbox" id="toggleOrig" checked />
+            <span class="line-sample line-red"></span>
+            <span>원래 그래프 (f(x, y) = 0)</span>
+          </label>
+          <label class="legend-item">
+            <input type="checkbox" id="toggleTrans" checked />
+            <span class="line-sample line-blue"></span>
+            <span>45° 회전 변환 그래프 (f'(x, y) = 0)</span>
+          </label>
+          <label class="legend-item">
+            <input type="checkbox" id="toggleRotAxes" checked />
+            <span class="line-sample line-sky-dashed"></span>
+            <span>45° 회전 보조축 (y = x, y = -x)</span>
+          </label>
+        </div>
+
+        <!-- 확대/축소/초기화 컨트롤 -->
+        <div class="canvas-controls">
+          <button type="button" class="ctrl-btn" id="zoomInBtn" title="확대">+</button>
+          <button type="button" class="ctrl-btn" id="zoomOutBtn" title="축소">−</button>
+          <button type="button" class="ctrl-btn" id="resetViewBtn">화면 초기화</button>
+        </div>
+
+        <!-- 마우스 좌표 표시 -->
+        <div class="coord-readout" id="coordReadout">x: 0.00, y: 0.00</div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    (function () {
+      const EPS = 1e-12;
+      const INV_SQRT2 = Math.SQRT1_2;
+
+      const PRESETS = {
+        hyperbola: { A: 0, B: 1, C: 0, D: 0, E: 0, F: -1 },
+        ellipse:   { A: 5, B: 6, C: 5, D: 0, E: 0, F: -8 },
+        parabola:  { A: 1, B: -2, C: 1, D: -4, E: -4, F: 0 },
+        general:   { A: 2, B: 4, C: -1, D: -6, E: 2, F: -3 }
+      };
+
+      const inputs = {
+        A: document.getElementById('inA'),
+        B: document.getElementById('inB'),
+        C: document.getElementById('inC'),
+        D: document.getElementById('inD'),
+        E: document.getElementById('inE'),
+        F: document.getElementById('inF')
+      };
+
+      const origEqPreview = document.getElementById('origEqPreview');
+      const transEqPreview = document.getElementById('transEqPreview');
+      const conicBadge = document.getElementById('conicBadge');
+      const step1Math = document.getElementById('step1Math');
+      const step2Math = document.getElementById('step2Math');
+      const step3Math = document.getElementById('step3Math');
+      const step4Math = document.getElementById('step4Math');
+      const toastMsg = document.getElementById('toastMsg');
+
+      const canvas = document.getElementById('graphCanvas');
+      const canvasWrapper = document.getElementById('canvasWrapper');
+      const ctx = canvas.getContext('2d');
+      const coordReadout = document.getElementById('coordReadout');
+
+      const toggleOrig = document.getElementById('toggleOrig');
+      const toggleTrans = document.getElementById('toggleTrans');
+      const toggleRotAxes = document.getElementById('toggleRotAxes');
+
+      let state = {
+        orig: { A: 0, B: 1, C: 0, D: 0, E: 0, F: -1 },
+        trans: { A: 0.5, B: 0, C: -0.5, D: 0, E: 0, F: -1 }
+      };
+
+      let view = {
+        scale: 55,
+        offsetX: 0,
+        offsetY: 0
+      };
+
+      let toastTimer = null;
+      function showToast(msg, isWarn = false) {
+        toastMsg.textContent = msg;
+        toastMsg.classList.toggle('warn', isWarn);
+        toastMsg.classList.add('show');
+        clearTimeout(toastTimer);
+        toastTimer = setTimeout(() => {
+          toastMsg.classList.remove('show');
+        }, 3200);
+      }
+
+      // URL 파라미터에서 계수 불러오기 (공유 링크 접속 시)
+      function loadFromURL() {
+        const params = new URLSearchParams(window.location.search);
+        const keys = ['A', 'B', 'C', 'D', 'E', 'F'];
+        let loaded = false;
+        keys.forEach((k) => {
+          if (params.has(k) && params.get(k) !== '' && !isNaN(Number(params.get(k)))) {
+            inputs[k].value = Number(params.get(k));
+            loaded = true;
+          }
+        });
+        if (loaded) {
+          document.querySelectorAll('.preset-btn').forEach((b) => b.classList.remove('active'));
+        }
+      }
+
+      // 현재 계수를 브라우저 주소창 쿼리 스트링과 동기화
+      function syncURL(orig) {
+        try {
+          const params = new URLSearchParams();
+          params.set('A', orig.A);
+          params.set('B', orig.B);
+          params.set('C', orig.C);
+          params.set('D', orig.D);
+          params.set('E', orig.E);
+          params.set('F', orig.F);
+          const newUrl = window.location.pathname + '?' + params.toString();
+          window.history.replaceState(null, '', newUrl);
+        } catch (e) {
+          // 제한된 샌드박스 환경 무시
+        }
+      }
+
+      function cleanZero(val) {
+        return Math.abs(val) < EPS ? 0 : val;
+      }
+
+      function fmtNum(val) {
+        const v = cleanZero(val);
+        if (v === 0) return '0';
+        const rounded = Math.round(v * 10000) / 10000;
+        if (Math.abs(rounded) < EPS) return '0';
+        return Number(rounded.toFixed(4)).toString();
+      }
+
+      function formatEquation(coeffs, xSym = 'x', ySym = 'y') {
+        const terms = [
+          { val: coeffs.A, sym: `${xSym}²` },
+          { val: coeffs.B, sym: `${xSym}${ySym}` },
+          { val: coeffs.C, sym: `${ySym}²` },
+          { val: coeffs.D, sym: `${xSym}` },
+          { val: coeffs.E, sym: `${ySym}` },
+          { val: coeffs.F, sym: '' }
+        ];
+
+        let str = '';
+        for (const t of terms) {
+          const v = cleanZero(t.val);
+          if (v === 0) continue;
+
+          const sign = v < 0 ? (str === '' ? '-' : ' - ') : (str === '' ? '' : ' + ');
+          const absV = Math.abs(v);
+          let numStr = fmtNum(absV);
+
+          if (t.sym !== '' && Math.abs(absV - 1) < EPS) {
+            numStr = '';
+          }
+
+          str += `${sign}${numStr}${t.sym}`;
+        }
+
+        return (str === '' ? '0' : str) + ' = 0';
+      }
+
+      function classifyConic(A, B, C, D, E, F) {
+        A = cleanZero(A);
+        B = cleanZero(B);
+        C = cleanZero(C);
+        if (A === 0 && B === 0 && C === 0) {
+          return (cleanZero(D) === 0 && cleanZero(E) === 0) ? '상수식' : '직선 (1차식)';
+        }
+        const disc = cleanZero(B * B - 4 * A * C);
+        if (disc < 0) {
+          if (Math.abs(A - C) < EPS && B === 0) return '원 / 타원 (Circle/Ellipse)';
+          return '타원 (Ellipse)';
+        } else if (disc > 0) {
+          return '쌍곡선 (Hyperbola)';
+        } else {
+          return '포물선 (Parabola)';
+        }
+      }
+
+      function computeRotation45(orig) {
+        const { A, B, C, D, E, F } = orig;
+        const halfB = B / 2;
+
+        const Qp11 = cleanZero((A + B + C) / 2);
+        const Qp12 = cleanZero((C - A) / 2);
+        const Qp21 = cleanZero((C - A) / 2);
+        const Qp22 = cleanZero((A - B + C) / 2);
+
+        const Dp = cleanZero((D + E) * INV_SQRT2);
+        const Ep = cleanZero((-D + E) * INV_SQRT2);
+        const Fp = cleanZero(F);
+
+        const trans = {
+          A: Qp11,
+          B: cleanZero(2 * Qp12),
+          C: Qp22,
+          D: Dp,
+          E: Ep,
+          F: Fp
+        };
+
+        return {
+          halfB: cleanZero(halfB),
+          Qp: [
+            [Qp11, Qp12],
+            [Qp21, Qp22]
+          ],
+          Kp: [Dp, Ep],
+          trans
+        };
+      }
+
+      function renderMathBlock(el, tex, fallbackHtml) {
+        el.dataset.tex = tex;
+        if (window.katex) {
+          try {
+            window.katex.render(tex, el, { displayMode: true, throwOnError: false });
+            return;
+          } catch (e) {}
+        }
+        el.innerHTML = fallbackHtml;
+      }
+
+      window.onKatexLoaded = function () {
+        [step1Math, step2Math, step3Math, step4Math].forEach((el) => {
+          if (el.dataset.tex) {
+            window.katex.render(el.dataset.tex, el, { displayMode: true, throwOnError: false });
+          }
+        });
+      };
+
+      function updateMathUI() {
+        const orig = {
+          A: parseFloat(inputs.A.value) || 0,
+          B: parseFloat(inputs.B.value) || 0,
+          C: parseFloat(inputs.C.value) || 0,
+          D: parseFloat(inputs.D.value) || 0,
+          E: parseFloat(inputs.E.value) || 0,
+          F: parseFloat(inputs.F.value) || 0
+        };
+
+        const res = computeRotation45(orig);
+        state.orig = orig;
+        state.trans = res.trans;
+        syncURL(orig);
+
+        origEqPreview.textContent = formatEquation(orig, 'x', 'y');
+        transEqPreview.textContent = formatEquation(res.trans, "x'", "y'");
+        conicBadge.textContent = classifyConic(orig.A, orig.B, orig.C, orig.D, orig.E, orig.F);
+
+        const sA = fmtNum(orig.A), sHB = fmtNum(res.halfB), sC = fmtNum(orig.C);
+        const sD = fmtNum(orig.D), sE = fmtNum(orig.E), sF = fmtNum(orig.F);
+
+        const tex1 = `\mathbf{x}^T Q \mathbf{x} + K \mathbf{x} + F = 0, \quad Q = \begin{pmatrix} ${sA} & ${sHB} \\ ${sHB} & ${sC} \end{pmatrix}, \quad K = \begin{pmatrix} ${sD} & ${sE} \end{pmatrix}, \quad F = ${sF}`;
+        const fb1 = `<div class="fallback-math">
+          <b>x</b><sup>T</sup>Q<b>x</b> + K<b>x</b> + F = 0,&nbsp;
+          Q = <table class="mat"><tr><td>${sA}</td><td>${sHB}</td></tr><tr><td>${sHB}</td><td>${sC}</td></tr></table>,&nbsp;
+          K = <table class="mat"><tr><td>${sD}</td><td>${sE}</td></tr></table>,&nbsp;
+          F = ${sF}
+        </div>`;
+        renderMathBlock(step1Math, tex1, fb1);
+
+        const tex2 = `\mathbf{x} = R\mathbf{x}', \quad R = \begin{pmatrix} \cos 45^\circ & -\sin 45^\circ \\ \sin 45^\circ & \cos 45^\circ \end{pmatrix} = \frac{1}{\sqrt{2}} \begin{pmatrix} 1 & -1 \\ 1 & 1 \end{pmatrix} \approx \begin{pmatrix} 0.7071 & -0.7071 \\ 0.7071 & 0.7071 \end{pmatrix}`;
+        const fb2 = `<div class="fallback-math">
+          <b>x</b> = R<b>x'</b>,&nbsp;
+          R = (1/√2) <table class="mat"><tr><td>1</td><td>-1</td></tr><tr><td>1</td><td>1</td></tr></table>
+          ≈ <table class="mat"><tr><td>0.7071</td><td>-0.7071</td></tr><tr><td>0.7071</td><td>0.7071</td></tr></table>
+        </div>`;
+        renderMathBlock(step2Math, tex2, fb2);
+
+        const q11 = fmtNum(res.Qp[0][0]), q12 = fmtNum(res.Qp[0][1]);
+        const q21 = fmtNum(res.Qp[1][0]), q22 = fmtNum(res.Qp[1][1]);
+        const dp = fmtNum(res.Kp[0]), ep = fmtNum(res.Kp[1]);
+
+        const tex3 = `\begin{aligned}
+          Q' &= R^T Q R = \frac{1}{2}\begin{pmatrix} 1 & 1 \\ -1 & 1 \end{pmatrix}\begin{pmatrix} ${sA} & ${sHB} \\ ${sHB} & ${sC} \end{pmatrix}\begin{pmatrix} 1 & -1 \\ 1 & 1 \end{pmatrix} = \begin{pmatrix} ${q11} & ${q12} \\ ${q21} & ${q22} \end{pmatrix} \\[6pt]
+          K' &= K R = \begin{pmatrix} ${sD} & ${sE} \end{pmatrix} \frac{1}{\sqrt{2}}\begin{pmatrix} 1 & -1 \\ 1 & 1 \end{pmatrix} = \begin{pmatrix} ${dp} & ${ep} \end{pmatrix}
+        \end{aligned}`;
+        const fb3 = `<div class="fallback-math" style="flex-direction:column; align-items:flex-start;">
+          <div>Q' = R<sup>T</sup>QR = <table class="mat"><tr><td>${q11}</td><td>${q12}</td></tr><tr><td>${q21}</td><td>${q22}</td></tr></table></div>
+          <div>K' = KR = <table class="mat"><tr><td>${dp}</td><td>${ep}</td></tr></table></div>
+        </div>`;
+        renderMathBlock(step3Math, tex3, fb3);
+
+        const tA = fmtNum(res.trans.A), tB = fmtNum(res.trans.B), tC = fmtNum(res.trans.C);
+        const tD = fmtNum(res.trans.D), tE = fmtNum(res.trans.E), tF = fmtNum(res.trans.F);
+        const tex4 = `A' = ${tA}, \quad B' = 2(${q12}) = ${tB}, \quad C' = ${tC}, \quad D' = ${tD}, \quad E' = ${tE}, \quad F' = ${tF}`;
+        const fb4 = `<div class="fallback-math">
+          A' = ${tA}, &nbsp; B' = ${tB}, &nbsp; C' = ${tC}, &nbsp; D' = ${tD}, &nbsp; E' = ${tE}, &nbsp; F' = ${tF}
+        </div>`;
+        renderMathBlock(step4Math, tex4, fb4);
+
+        drawGraph();
+      }
+
+      function evalConic(c, x, y) {
+        return c.A * x * x + c.B * x * y + c.C * y * y + c.D * x + c.E * y + c.F;
+      }
+
+      function drawImplicitCurve(coeffs, color, lineWidth, width, height) {
+        const { A, B, C, D, E, F } = coeffs;
+        if (Math.abs(A) < EPS && Math.abs(B) < EPS && Math.abs(C) < EPS &&
+            Math.abs(D) < EPS && Math.abs(E) < EPS && Math.abs(F) < EPS) {
+          return;
+        }
+
+        const cellSize = 4;
+        const cols = Math.ceil(width / cellSize);
+        const rows = Math.ceil(height / cellSize);
+
+        const cx = width / 2 + view.offsetX;
+        const cy = height / 2 + view.offsetY;
+        const invScale = 1 / view.scale;
+
+        const grid = new Float64Array((rows + 1) * (cols + 1));
+        for (let r = 0; r <= rows; r++) {
+          const py = r * cellSize;
+          const y = (cy - py) * invScale;
+          const rowOffset = r * (cols + 1);
+          for (let c = 0; c <= cols; c++) {
+            const px = c * cellSize;
+            const x = (px - cx) * invScale;
+            grid[rowOffset + c] = evalConic(coeffs, x, y);
+          }
+        }
+
+        ctx.save();
+        ctx.strokeStyle = color;
+        ctx.lineWidth = lineWidth;
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        ctx.beginPath();
+
+        function interp(p1, p2, v1, v2) {
+          const denom = v1 - v2;
+          if (Math.abs(denom) < 1e-18) return (p1 + p2) * 0.5;
+          const t = v1 / denom;
+          return p1 + t * (p2 - p1);
+        }
+
+        for (let r = 0; r < rows; r++) {
+          const y0 = r * cellSize;
+          const y1 = y0 + cellSize;
+          const r0 = r * (cols + 1);
+          const r1 = (r + 1) * (cols + 1);
+
+          for (let c = 0; c < cols; c++) {
+            const vTL = grid[r0 + c];
+            const vTR = grid[r0 + c + 1];
+            const vBR = grid[r1 + c + 1];
+            const vBL = grid[r1 + c];
+
+            let code = 0;
+            if (vTL >= 0) code |= 8;
+            if (vTR >= 0) code |= 4;
+            if (vBR >= 0) code |= 2;
+            if (vBL >= 0) code |= 1;
+
+            if (code === 0 || code === 15) continue;
+
+            const x0 = c * cellSize;
+            const x1 = x0 + cellSize;
+
+            const topX = interp(x0, x1, vTL, vTR);
+            const rightY = interp(y0, y1, vTR, vBR);
+            const botX = interp(x0, x1, vBL, vBR);
+            const leftY = interp(y0, y1, vTL, vBL);
+
+            switch (code) {
+              case 1:
+              case 14:
+                ctx.moveTo(x0, leftY);
+                ctx.lineTo(botX, y1);
+                break;
+              case 2:
+              case 13:
+                ctx.moveTo(botX, y1);
+                ctx.lineTo(x1, rightY);
+                break;
+              case 3:
+              case 12:
+                ctx.moveTo(x0, leftY);
+                ctx.lineTo(x1, rightY);
+                break;
+              case 4:
+              case 11:
+                ctx.moveTo(topX, y0);
+                ctx.lineTo(x1, rightY);
+                break;
+              case 5: {
+                const midX = ((x0 + x1) * 0.5 - cx) * invScale;
+                const midY = (cy - (y0 + y1) * 0.5) * invScale;
+                const vMid = evalConic(coeffs, midX, midY);
+                if (vMid >= 0) {
+                  ctx.moveTo(x0, leftY);
+                  ctx.lineTo(topX, y0);
+                  ctx.moveTo(botX, y1);
+                  ctx.lineTo(x1, rightY);
+                } else {
+                  ctx.moveTo(x0, leftY);
+                  ctx.lineTo(botX, y1);
+                  ctx.moveTo(topX, y0);
+                  ctx.lineTo(x1, rightY);
+                }
+                break;
+              }
+              case 6:
+              case 9:
+                ctx.moveTo(topX, y0);
+                ctx.lineTo(botX, y1);
+                break;
+              case 7:
+              case 8:
+                ctx.moveTo(x0, leftY);
+                ctx.lineTo(topX, y0);
+                break;
+              case 10: {
+                const midX = ((x0 + x1) * 0.5 - cx) * invScale;
+                const midY = (cy - (y0 + y1) * 0.5) * invScale;
+                const vMid = evalConic(coeffs, midX, midY);
+                if (vMid >= 0) {
+                  ctx.moveTo(x0, leftY);
+                  ctx.lineTo(botX, y1);
+                  ctx.moveTo(topX, y0);
+                  ctx.lineTo(x1, rightY);
+                } else {
+                  ctx.moveTo(x0, leftY);
+                  ctx.lineTo(topX, y0);
+                  ctx.moveTo(botX, y1);
+                  ctx.lineTo(x1, rightY);
+                }
+                break;
+              }
+            }
+          }
+        }
+
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      function getNiceStep(scale) {
+        const targetPx = 65;
+        const rawStep = targetPx / scale;
+        const mag = Math.pow(10, Math.floor(Math.log10(rawStep)));
+        const norm = rawStep / mag;
+        if (norm < 1.5) return 1 * mag;
+        if (norm < 3.5) return 2 * mag;
+        if (norm < 7.5) return 5 * mag;
+        return 10 * mag;
+      }
+
+      function drawGraph() {
+        const rect = canvasWrapper.getBoundingClientRect();
+        const width = rect.width;
+        const height = rect.height;
+        if (width === 0 || height === 0) return;
+
+        const dpr = window.devicePixelRatio || 1;
+        if (canvas.width !== Math.floor(width * dpr) || canvas.height !== Math.floor(height * dpr)) {
+          canvas.width = Math.floor(width * dpr);
+          canvas.height = Math.floor(height * dpr);
+        }
+
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        ctx.clearRect(0, 0, width, height);
+
+        const cx = width / 2 + view.offsetX;
+        const cy = height / 2 + view.offsetY;
+        const step = getNiceStep(view.scale);
+        const stepPx = step * view.scale;
+
+        ctx.save();
+        ctx.strokeStyle = '#f1f5f9';
+        ctx.lineWidth = 1;
+
+        const startX = cx % stepPx;
+        for (let x = startX; x <= width; x += stepPx) {
+          ctx.beginPath();
+          ctx.moveTo(x, 0);
+          ctx.lineTo(x, height);
+          ctx.stroke();
+        }
+        const startY = cy % stepPx;
+        for (let y = startY; y <= height; y += stepPx) {
+          ctx.beginPath();
+          ctx.moveTo(0, y);
+          ctx.lineTo(width, y);
+          ctx.stroke();
+        }
+        ctx.restore();
+
+        if (toggleRotAxes.checked) {
+          ctx.save();
+          ctx.strokeStyle = '#38bdf8';
+          ctx.lineWidth = 1.6;
+          ctx.setLineDash([7, 6]);
+
+          const diag = Math.hypot(width, height) + 100;
+
+          ctx.beginPath();
+          ctx.moveTo(cx - diag, cy + diag);
+          ctx.lineTo(cx + diag, cy - diag);
+          ctx.stroke();
+
+          ctx.beginPath();
+          ctx.moveTo(cx - diag, cy - diag);
+          ctx.lineTo(cx + diag, cy + diag);
+          ctx.stroke();
+
+          ctx.setLineDash([]);
+          ctx.fillStyle = '#0284c7';
+          ctx.font = '600 12px sans-serif';
+          const labelOffset = Math.min(width, height) * 0.34;
+          ctx.fillText("x'축 (y = x)", cx + labelOffset + 6, cy - labelOffset);
+          ctx.fillText("y'축 (y = -x)", cx - labelOffset - 76, cy - labelOffset);
+          ctx.restore();
+        }
+
+        ctx.save();
+        ctx.strokeStyle = '#334155';
+        ctx.lineWidth = 1.5;
+
+        if (cy >= 0 && cy <= height) {
+          ctx.beginPath();
+          ctx.moveTo(0, cy);
+          ctx.lineTo(width, cy);
+          ctx.stroke();
+        }
+        if (cx >= 0 && cx <= width) {
+          ctx.beginPath();
+          ctx.moveTo(cx, 0);
+          ctx.lineTo(cx, height);
+          ctx.stroke();
+        }
+
+        ctx.fillStyle = '#64748b';
+        ctx.font = '11px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'top';
+
+        const minUnitX = Math.floor((-cx) / view.scale / step) * step;
+        const maxUnitX = Math.ceil((width - cx) / view.scale / step) * step;
+        for (let u = minUnitX; u <= maxUnitX; u += step) {
+          const val = cleanZero(u);
+          if (val === 0) continue;
+          const px = cx + val * view.scale;
+          const py = Math.min(Math.max(cy + 5, 4), height - 16);
+          ctx.fillText(fmtNum(val), px, py);
+        }
+
+        ctx.textAlign = 'right';
+        ctx.textBaseline = 'middle';
+        const minUnitY = Math.floor((cy - height) / view.scale / step) * step;
+        const maxUnitY = Math.ceil(cy / view.scale / step) * step;
+        for (let u = minUnitY; u <= maxUnitY; u += step) {
+          const val = cleanZero(u);
+          if (val === 0) continue;
+          const px = Math.min(Math.max(cx - 6, 26), width - 4);
+          const py = cy - val * view.scale;
+          ctx.fillText(fmtNum(val), px, py);
+        }
+
+        if (cx >= 10 && cx <= width - 10 && cy >= 10 && cy <= height - 10) {
+          ctx.fillText('O', cx - 6, cy + 10);
+        }
+        ctx.fillStyle = '#0f172a';
+        ctx.font = '700 12px sans-serif';
+        if (cy >= 14 && cy <= height - 14) {
+          ctx.fillText('x', width - 10, cy - 12);
+        }
+        if (cx >= 14 && cx <= width - 14) {
+          ctx.fillText('y', cx + 14, 14);
+        }
+        ctx.restore();
+
+        if (toggleOrig.checked) {
+          drawImplicitCurve(state.orig, '#ef4444', 2.5, width, height);
+        }
+
+        if (toggleTrans.checked) {
+          drawImplicitCurve(state.trans, '#3b82f6', 2.5, width, height);
+        }
+      }
+
+      // 링크 복사 기능
+      function fallbackCopy(text, callback) {
+        const ta = document.createElement('textarea');
+        ta.value = text;
+        ta.style.position = 'fixed';
+        ta.style.opacity = '0';
+        document.body.appendChild(ta);
+        ta.select();
+        try {
+          document.execCommand('copy');
+          callback();
+        } catch (e) {
+          showToast('링크 복사에 실패했습니다. 주소창의 URL을 직접 복사해 주세요.', true);
+        }
+        document.body.removeChild(ta);
+      }
+
+      document.getElementById('shareLinkBtn').addEventListener('click', () => {
+        const params = new URLSearchParams();
+        params.set('A', state.orig.A);
+        params.set('B', state.orig.B);
+        params.set('C', state.orig.C);
+        params.set('D', state.orig.D);
+        params.set('E', state.orig.E);
+        params.set('F', state.orig.F);
+
+        const isLocal = window.location.protocol === 'file:';
+        const baseUrl = isLocal
+          ? window.location.href.split('?')[0]
+          : (window.location.origin + window.location.pathname);
+        const shareUrl = `${baseUrl}?${params.toString()}`;
+
+        const onSuccess = () => {
+          if (isLocal) {
+            showToast('로컬 파일 경로가 복사되었습니다. 웹 호스팅에 올린 뒤 공유하면 누구나 접속할 수 있습니다!', true);
+          } else {
+            showToast('현재 수식과 그래프가 담긴 공유 링크가 클립보드에 복사되었습니다!');
+          }
+        };
+
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(shareUrl).then(onSuccess).catch(() => fallbackCopy(shareUrl, onSuccess));
+        } else {
+          fallbackCopy(shareUrl, onSuccess);
+        }
+      });
+
+      // 그래프 이미지(PNG) 저장 기능 (보고서 첨부용 흰색 배경 합성)
+      document.getElementById('savePngBtn').addEventListener('click', () => {
+        const exportCanvas = document.createElement('canvas');
+        exportCanvas.width = canvas.width;
+        exportCanvas.height = canvas.height;
+        const eCtx = exportCanvas.getContext('2d');
+        eCtx.fillStyle = '#ffffff';
+        eCtx.fillRect(0, 0, exportCanvas.width, exportCanvas.height);
+        eCtx.drawImage(canvas, 0, 0);
+
+        const link = document.createElement('a');
+        link.download = 'conic_rotation_graph.png';
+        link.href = exportCanvas.toDataURL('image/png');
+        link.click();
+        showToast('그래프 이미지(conic_rotation_graph.png)가 저장되었습니다!');
+      });
+
+      document.querySelectorAll('.preset-btn').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          document.querySelectorAll('.preset-btn').forEach((b) => b.classList.remove('active'));
+          btn.classList.add('active');
+          const p = PRESETS[btn.dataset.preset];
+          if (!p) return;
+          inputs.A.value = p.A;
+          inputs.B.value = p.B;
+          inputs.C.value = p.C;
+          inputs.D.value = p.D;
+          inputs.E.value = p.E;
+          inputs.F.value = p.F;
+          updateMathUI();
+        });
+      });
+
+      Object.values(inputs).forEach((inp) => {
+        inp.addEventListener('input', () => {
+          document.querySelectorAll('.preset-btn').forEach((b) => b.classList.remove('active'));
+          updateMathUI();
+        });
+      });
+
+      [toggleOrig, toggleTrans, toggleRotAxes].forEach((chk) => {
+        chk.addEventListener('change', drawGraph);
+      });
+
+      canvasWrapper.addEventListener('wheel', (e) => {
+        e.preventDefault();
+        const rect = canvasWrapper.getBoundingClientRect();
+        const mouseX = e.clientX - rect.left;
+        const mouseY = e.clientY - rect.top;
+
+        const cx = rect.width / 2 + view.offsetX;
+        const cy = rect.height / 2 + view.offsetY;
+
+        const worldX = (mouseX - cx) / view.scale;
+        const worldY = (cy - mouseY) / view.scale;
+
+        const zoomFactor = e.deltaY < 0 ? 1.15 : 1 / 1.15;
+        const newScale = Math.min(Math.max(view.scale * zoomFactor, 8), 600);
+
+        view.scale = newScale;
+        view.offsetX = mouseX - rect.width / 2 - worldX * newScale;
+        view.offsetY = mouseY - rect.height / 2 + worldY * newScale;
+
+        drawGraph();
+      }, { passive: false });
+
+      let isDragging = false;
+      let dragStartX = 0;
+      let dragStartY = 0;
+
+      canvasWrapper.addEventListener('mousedown', (e) => {
+        if (e.target.closest('.legend-card') || e.target.closest('.canvas-controls')) return;
+        isDragging = true;
+        dragStartX = e.clientX - view.offsetX;
+        dragStartY = e.clientY - view.offsetY;
+      });
+
+      window.addEventListener('mousemove', (e) => {
+        const rect = canvasWrapper.getBoundingClientRect();
+        if (isDragging) {
+          view.offsetX = e.clientX - dragStartX;
+          view.offsetY = e.clientY - dragStartY;
+          drawGraph();
+        }
+        if (e.clientX >= rect.left && e.clientX <= rect.right &&
+            e.clientY >= rect.top && e.clientY <= rect.bottom) {
+          const cx = rect.width / 2 + view.offsetX;
+          const cy = rect.height / 2 + view.offsetY;
+          const wx = (e.clientX - rect.left - cx) / view.scale;
+          const wy = (cy - (e.clientY - rect.top)) / view.scale;
+          coordReadout.textContent = `x: ${wx.toFixed(2)}, y: ${wy.toFixed(2)}`;
+        }
+      });
+
+      window.addEventListener('mouseup', () => {
+        isDragging = false;
+      });
+
+      document.getElementById('zoomInBtn').addEventListener('click', () => {
+        view.scale = Math.min(view.scale * 1.25, 600);
+        drawGraph();
+      });
+
+      document.getElementById('zoomOutBtn').addEventListener('click', () => {
+        view.scale = Math.max(view.scale / 1.25, 8);
+        drawGraph();
+      });
+
+      document.getElementById('resetViewBtn').addEventListener('click', () => {
+        view.scale = 55;
+        view.offsetX = 0;
+        view.offsetY = 0;
+        drawGraph();
+      });
+
+      window.addEventListener('resize', drawGraph);
+
+      // 초기화: URL 파라미터 확인 후 렌더링
+      loadFromURL();
+      updateMathUI();
+    })();
+  </script>
+</body>
+</html>
